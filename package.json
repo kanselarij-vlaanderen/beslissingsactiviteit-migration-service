@@ -1,0 +1,22 @@
+{
+  "name": "beslissingsactiviteit-migration-service",
+  "version": "0.0.1",
+  "description": "Microservice to perform the necessary migrations related to BehandelingVanAgendapunt and BeslissingsActivitiet",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/kanselarij-vlaanderen/beslissingsactiviteit-migration-service.git"
+  },
+  "keywords": [
+    "mu-service"
+  ],
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/kanselarij-vlaanderen/beslissingsactiviteit-migration-service/issues"
+  },
+  "homepage": "https://github.com/kanselarij-vlaanderen/beslissingsactiviteit-migration-service#readme"
+}
