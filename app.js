@@ -194,30 +194,110 @@ async function migrateAgendaitemTreatments(uris) {
 
   DELETE {
     GRAPH <${KANSELARIJ_GRAPH}> {
-      ?agendaitemTreatment dossier:Activiteit.startdatum ?startDate ;
-                           ext:beslissingVindtPlaatsTijdens ?subcase ;
-                           besluitvorming:resultaat ?decisionResultCode ;
-                           besluitvorming:genereertVerslag ?piece .
+      ?agendaitemTreatment dossier:Activiteit.startdatum ?startDate .
     }
   }
   INSERT {
     GRAPH <${KANSELARIJ_GRAPH}> {
-      ?agendaitemTreatment besluitvorming:heeftBeslissing ?decisionActivity .
-      ?decisionActivity dossier:Activiteit.startdatum ?startDate ;
-                        ext:beslissingVindtPlaatsTijdens ?subcase ;
-                        besluitvorming:resultaat ?decisionResultCode ;
-                        a besluitvorming:Beslissingsactiviteit ;
-                        mu:uuid ?uuid .
+      ?decisionActivity dossier:Activiteit.startdatum ?startDate .
+    }
+  }
+  WHERE {
+    GRAPH <${KANSELARIJ_GRAPH}> {
+      ?agendaitemTreatment a besluit:BehandelingVanAgendapunt .
+      ?agendaitemTreatment dossier:Activiteit.startdatum ?startDate .
+    }
+    VALUES (?agendaitemTreatment ?decisionActivity) {`;
+  for (const { agendaitemTreatment, decisionActivity } of items) {
+    theQuery += `
+      (<${agendaitemTreatment}> <${decisionActivity}>)`;
+  }
+  theQuery += `
+    }
+  };`;
+  theQuery += `
+  DELETE {
+    GRAPH <${KANSELARIJ_GRAPH}> {
+      ?agendaitemTreatment ext:beslissingVindtPlaatsTijdens ?subcase .
+    }
+  }
+  INSERT {
+    GRAPH <${KANSELARIJ_GRAPH}> {
+      ?decisionActivity ext:beslissingVindtPlaatsTijdens ?subcase .
+    }
+  }
+  WHERE {
+    GRAPH <${KANSELARIJ_GRAPH}> {
+      ?agendaitemTreatment a besluit:BehandelingVanAgendapunt .
+      ?agendaitemTreatment ext:beslissingVindtPlaatsTijdens ?subcase .
+    }
+    VALUES (?agendaitemTreatment ?decisionActivity) {`;
+  for (const { agendaitemTreatment, decisionActivity } of items) {
+    theQuery += `
+      (<${agendaitemTreatment}> <${decisionActivity}>)`;
+  }
+  theQuery += `
+    }
+  };`;
+  theQuery += `
+  DELETE {
+    GRAPH <${KANSELARIJ_GRAPH}> {
+      ?agendaitemTreatment besluitvorming:resultaat ?decisionResultCode .
+    }
+  }
+  INSERT {
+    GRAPH <${KANSELARIJ_GRAPH}> {
+      ?decisionActivity besluitvorming:resultaat ?decisionResultCode .
+    }
+  }
+  WHERE {
+    GRAPH <${KANSELARIJ_GRAPH}> {
+      ?agendaitemTreatment a besluit:BehandelingVanAgendapunt .
+      ?agendaitemTreatment besluitvorming:resultaat ?decisionResultCode .
+    }
+    VALUES (?agendaitemTreatment ?decisionActivity) {`;
+  for (const { agendaitemTreatment, decisionActivity } of items) {
+    theQuery += `
+      (<${agendaitemTreatment}> <${decisionActivity}>)`;
+  }
+  theQuery += `
+    }
+  };`;
+  theQuery += `
+  DELETE {
+    GRAPH <${KANSELARIJ_GRAPH}> {
+      ?agendaitemTreatment besluitvorming:genereertVerslag ?piece .
+    }
+  }
+  INSERT {
+    GRAPH <${KANSELARIJ_GRAPH}> {
       ?piece besluitvorming:beschrijft ?decisionActivity .
     }
   }
   WHERE {
     GRAPH <${KANSELARIJ_GRAPH}> {
       ?agendaitemTreatment a besluit:BehandelingVanAgendapunt .
-      OPTIONAL { ?agendaitemTreatment dossier:Activiteit.startdatum ?startDate . }
-      OPTIONAL { ?agendaitemTreatment ext:beslissingVindtPlaatsTijdens ?subcase . }
-      OPTIONAL { ?agendaitemTreatment besluitvorming:resultaat ?decisionResultCode . }
-      OPTIONAL { ?agendaitemTreatment besluitvorming:genereertVerslag ?piece . }
+      ?agendaitemTreatment besluitvorming:genereertVerslag ?piece .
+    }
+    VALUES (?agendaitemTreatment ?decisionActivity) {`;
+  for (const { agendaitemTreatment, decisionActivity } of items) {
+    theQuery += `
+      (<${agendaitemTreatment}> <${decisionActivity}>)`;
+  }
+  theQuery += `
+    }
+  };`;
+  theQuery += `
+  INSERT {
+    GRAPH <${KANSELARIJ_GRAPH}> {
+      ?agendaitemTreatment besluitvorming:heeftBeslissing ?decisionActivity .
+      ?decisionActivity a besluitvorming:Beslissingsactiviteit ;
+                        mu:uuid ?uuid .
+    }
+  }
+  WHERE {
+    GRAPH <${KANSELARIJ_GRAPH}> {
+      ?agendaitemTreatment a besluit:BehandelingVanAgendapunt .
     }
     VALUES (?agendaitemTreatment ?uuid ?decisionActivity) {`;
   for (const { agendaitemTreatment, uuid, decisionActivity } of items) {
