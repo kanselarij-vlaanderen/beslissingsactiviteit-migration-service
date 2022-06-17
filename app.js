@@ -145,6 +145,94 @@ async function fetchDoubledAgendaitemTreatments() {
   }));
 }
 
+function countNonNullishProps(object) {
+  const values = Object.values(object);
+  return values.filter((item) => item != null && item != undefined).length;
+}
+
+async function mergeDoubledAgendaitemTreatments(items) {
+  for (const { first, second } of items) {
+    const firstCount = countNonNullishProps(first);
+    const secondCount = countNonNullishProps(second);
+    let main;
+    let copy;
+    if (firstCount > secondCount) {
+      main = first;
+      copy = second;
+    } else {
+      main = second;
+      copy = first;
+    }
+
+    let theQuery = `
+    PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
+    PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
+    PREFIX dossier: <https://data.vlaanderen.be/ns/dossier#>
+    PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
+    PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
+    PREFIX sign: <http://mu.semte.ch/vocabularies/ext/handtekenen/>
+    PREFIX dct: <http://purl.org/dc/terms/>
+    PREFIX prov: <http://www.w3.org/ns/prov#>
+
+    DELETE {
+      GRAPH <${KANSELARIJ_GRAPH}> {
+        ?s ?p ?o .
+      }
+    }
+    WHERE {
+      GRAPH <${KANSELARIJ_GRAPH}> {
+        {
+          BIND(<${main.agendaitemTreatment}> AS ?s)
+          ?s ?p ?o .
+        }
+        UNION
+        {
+          BIND(<${main.agendaitemTreatment}> AS ?o)
+          ?s ?p ?o .
+        }
+      }
+    };
+    DELETE {
+      GRAPH <${KANSELARIJ_GRAPH}> {
+        ?s ?p ?o .
+      }
+    }
+    WHERE {
+      GRAPH <${KANSELARIJ_GRAPH}> {
+        {
+          BIND(<${copy.agendaitemTreatment}> AS ?s)
+          ?s ?p ?o .
+        }
+        UNION
+        {
+          BIND(<${copy.agendaitemTreatment}> AS ?o)
+          ?s ?p ?o .
+        }
+      }
+    };
+    INSERT {
+      GRAPH <${KANSELARIJ_GRAPH}> {
+        ${main.startDate ?? copy.startDate ? '?agendaitemTreatment dossier:Activiteit.startdatum "' + (main.startDate ?? copy.startDate) + '"^^xsd:dateTime .' : ""}
+        ${main.created ?? copy.created ? '?agendaitemTreatment dct:created "' + (main.created ?? copy.created) + '"^^xsd:dateTime .' : ""}
+        ${main.modified ?? copy.modified ? '?agendaitemTreatment dct:modified "' + (main.modified ?? copy.modified) + '"^^xsd:dateTime .' : ""}
+        ${main.subcase ?? copy.subcase ? '?agendaitemTreatment ext:beslissingVindtPlaatsTijdens <' + (main.subcase ?? copy.subcase) + '> .' : ""}
+        ${main.piece ?? copy.piece ? '?agendaitemTreatment besluitvorming:genereertVerslag <' + (main.piece ?? copy.piece) + '> .' : ""}
+        ${main.newsletterInfo ?? copy.newsletterInfo ? '?agendaitemTreatment prov:generated <' + (main.newsletterInfo ?? copy.newsletterInfo) + '> .' : ""}
+        ${main.decisionResultCode ?? copy.decisionResultCode ? '?agendaitemTreatment besluitvorming:resultaat <' + (main.decisionResultCode ?? copy.decisionResultCode) + '> .' : ""}
+        ${main.publicationFlow ?? copy.publicationFlow ? '<' + (main.publicationFlow ?? copy.publicationFlow) + '> dct:subject ?agendaitemTreatment .' : ""}
+        ${main.signFlow ?? copy.signFlow ? '<' + (main.signFlow ?? copy.signFlow) + '> dct:subject ?agendaitemTreatment .' : ""}
+        ?agendaitemTreatment mu:uuid "${main.uuid}" .
+        ?agendaitemTreatment besluitvorming:heeftOnderwerp <${main.agendaitem}> .
+        ?agendaitemTreatment a besluit:BehandelingVanAgendapunt .
+      }
+    }
+    WHERE {
+      BIND(<${main.agendaitemTreatment}> AS ?agendaitemTreatment)
+    }`;
+    await update(theQuery);
+  }
+}
+
 async function fetchAgendaitemTreatments() {
   const response = await query(`
   PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
@@ -311,6 +399,10 @@ async function migrateAgendaitemTreatments(uris) {
 }
 
 (async function () {
+  console.log("Merging doubled agenda-item-treatments");
+  const doubledAgendaitemTreatments = await fetchDoubledAgendaitemTreatments();
+  await mergeDoubledAgendaitemTreatments(doubledAgendaitemTreatments);
+
   console.log(
     "Extracting decision-activity data from agenda-item-treatments on agendaitem"
   );
