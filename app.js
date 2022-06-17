@@ -37,7 +37,7 @@ async function update(theQuery, retryCount = 0) {
 
 async function fetchDoubledAgendaitemTreatments() {
   const response = await query(`
-  PREFIX mu: <http://mu.semte.ch/vocablures/core/>
+  PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
   PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
   PREFIX dossier: <https://data.vlaanderen.be/ns/dossier#>
   PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
@@ -48,7 +48,10 @@ async function fetchDoubledAgendaitemTreatments() {
 
   SELECT
 
+  ?agendaitem
+
   ?agendaitemTreatment
+  ?uuid
   ?startDate
   ?created
   ?modified
@@ -60,6 +63,7 @@ async function fetchDoubledAgendaitemTreatments() {
   ?signFlow
 
   ?agendaitemTreatment_
+  ?uuid_
   ?startDate_
   ?created_
   ?modified_
@@ -75,6 +79,7 @@ async function fetchDoubledAgendaitemTreatments() {
       ?agendaitem a besluit:Agendapunt .
 
       ?agendaitemTreatment a besluit:BehandelingVanAgendapunt .
+      ?agendaitemTreatment mu:uuid ?uuid .
       ?agendaitemTreatment besluitvorming:heeftOnderwerp ?agendaitem .
       OPTIONAL { ?agendaitemTreatment dossier:Activiteit.startdatum ?startDate . }
       OPTIONAL { ?agendaitemTreatment dct:created ?created . }
@@ -87,6 +92,7 @@ async function fetchDoubledAgendaitemTreatments() {
       OPTIONAL { ?signFlow sign:heeftBeslissing ?agendaitemTreatment . }
 
       ?agendaitemTreatment_ a besluit:BehandelingVanAgendapunt .
+      ?agendaitemTreatment_ mu:uuid ?uuid_ .
       ?agendaitemTreatment_ besluitvorming:heeftOnderwerp ?agendaitem .
       OPTIONAL { ?agendaitemTreatment_ dossier:Activiteit.startdatum ?startDate_ . }
       OPTIONAL { ?agendaitemTreatment_ dct:created ?created_ . }
@@ -109,7 +115,9 @@ async function fetchDoubledAgendaitemTreatments() {
   `);
   return response.results.bindings.map((binding) => ({
     first: {
+      agendaitem: binding.agendaitem.value,
       agendaitemTreatment: binding.agendaitemTreatment.value,
+      uuid: binding.uuid.value,
       startDate: binding.startDate?.value,
       created: binding.created?.value,
       modified: binding.modified?.value,
@@ -121,16 +129,18 @@ async function fetchDoubledAgendaitemTreatments() {
       signFlow: binding.signFlow?.value,
     },
     second: {
-      agendaitemTreatment_: binding.agendaitemTreatment_?.value,
-      startDate_: binding.startDate_?.value,
-      created_: binding.created_?.value,
-      modified_: binding.modified_?.value,
-      subcase_: binding.subcase_?.value,
-      piece_: binding.piece_?.value,
-      newsletterInfo_: binding.newsletterInfo_?.value,
-      decisionResultCode_: binding.decisionResultCode_?.value,
-      publicationFlow_: binding.publicationFlow_?.value,
-      signFlow_: binding.signFlow_?.value,
+      agendaitem: binding.agendaitem.value,
+      agendaitemTreatment: binding.agendaitemTreatment_?.value,
+      uuid: binding.uuid_.value,
+      startDate: binding.startDate_?.value,
+      created: binding.created_?.value,
+      modified: binding.modified_?.value,
+      subcase: binding.subcase_?.value,
+      piece: binding.piece_?.value,
+      newsletterInfo: binding.newsletterInfo_?.value,
+      decisionResultCode: binding.decisionResultCode_?.value,
+      publicationFlow: binding.publicationFlow_?.value,
+      signFlow: binding.signFlow_?.value,
     },
   }));
 }
@@ -176,7 +186,7 @@ async function migrateAgendaitemTreatments(uris) {
     });
   }
   let theQuery = `
-  PREFIX mu: <http://mu.semte.ch/vocablures/core/>
+  PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
   PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
   PREFIX dossier: <https://data.vlaanderen.be/ns/dossier#>
   PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
@@ -217,7 +227,6 @@ async function migrateAgendaitemTreatments(uris) {
   theQuery += `
     }
   }`;
-
   await update(theQuery);
 }
 
@@ -225,6 +234,7 @@ async function migrateAgendaitemTreatments(uris) {
   console.log(
     "Extracting decision-activity data from agenda-item-treatments on agendaitem"
   );
+
   let i = 1;
   while (true) {
     const agendaitemTreatmentUris = await fetchAgendaitemTreatments();
