@@ -1,6 +1,6 @@
 import { query as muQuery, update as muUpdate, uuid } from "mu";
 
-const BATCH_SIZE = 100;
+const BATCH_SIZE = 1;
 const KANSELARIJ_GRAPH = "http://mu.semte.ch/graphs/organizations/kanselarij";
 const DECISION_ACTIVITY_BASE =
   "http://themis.vlaanderen.be/id/beslissingsactiviteit/";
