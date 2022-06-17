@@ -146,10 +146,13 @@ async function fetchAgendaitemTreatments() {
       ?agendaitem a besluit:Agendapunt .
       ?agendaitemTreatment a besluit:BehandelingVanAgendapunt .
       ?agendaitemTreatment besluitvorming:heeftOnderwerp ?agendaitem .
-  return response.results.bindings.map((binding) => ({
-    agendaitemTreatment: binding.agendaitemTreatment.value,
-    agendaitemTreatment_: binding.agendaitemTreatment_.value,
-  }));
+
+      FILTER NOT EXISTS {
+        ?agendaitemTreatment besluitvorming:heeftBeslissing ?decisionActivity .
+      }
+
+      FILTER NOT EXISTS {
+        ?agendaitemTreatment_ a besluit:BehandelingVanAgendapunt .
         ?agendaitemTreatment_ besluitvorming:heeftOnderwerp ?agendaitem .
         FILTER (?agendaitemTreatment != ?agendaitemTreatment_)
       }
