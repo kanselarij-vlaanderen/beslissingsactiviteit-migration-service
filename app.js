@@ -76,6 +76,10 @@ async function fetchPubFlowTreatmentsWithoutAgendaitem() {
       FILTER NOT EXISTS {
         ?agendaitemTreatment besluitvorming:heeftBeslissing ?decisionActivity .
       }
+
+      FILTER NOT EXISTS {
+        ?agendaitemTreatment besluitvorming:heeftOnderwerp ?agendaitem .
+      }
     }
   }
   LIMIT ${BATCH_SIZE}
