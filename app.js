@@ -238,7 +238,7 @@ async function fetchAgendaitemTreatments() {
   PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
   PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
 
-  SELECT ?agendaitemTreatment
+  SELECT DISTINCT ?agendaitemTreatment
   WHERE {
     GRAPH <${KANSELARIJ_GRAPH}> {
       ?agendaitem a besluit:Agendapunt .
@@ -247,12 +247,6 @@ async function fetchAgendaitemTreatments() {
 
       FILTER NOT EXISTS {
         ?agendaitemTreatment besluitvorming:heeftBeslissing ?decisionActivity .
-      }
-
-      FILTER NOT EXISTS {
-        ?agendaitemTreatment_ a besluit:BehandelingVanAgendapunt .
-        ?agendaitemTreatment_ besluitvorming:heeftOnderwerp ?agendaitem .
-        FILTER (?agendaitemTreatment != ?agendaitemTreatment_)
       }
     }
   }
@@ -279,6 +273,8 @@ async function migrateAgendaitemTreatments(uris) {
   PREFIX dossier: <https://data.vlaanderen.be/ns/dossier#>
   PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
   PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
+  PREFIX prov: <http://www.w3.org/ns/prov#>
+  PREFIX dct: <http://purl.org/dc/terms/>
 
   DELETE {
     GRAPH <${KANSELARIJ_GRAPH}> {
@@ -376,6 +372,54 @@ async function migrateAgendaitemTreatments(uris) {
     }
   };`;
   theQuery += `
+  DELETE {
+    GRAPH <${KANSELARIJ_GRAPH}> {
+      ?agendaitemTreatment ext:documentenVoorBeslissing ?piece .
+    }
+  }
+  INSERT {
+    GRAPH <${KANSELARIJ_GRAPH}> {
+      ?decisionActivity prov:used ?piece .
+    }
+  }
+  WHERE {
+    GRAPH <${KANSELARIJ_GRAPH}> {
+      ?agendaitemTreatment a besluit:BehandelingVanAgendapunt .
+      ?agendaitemTreatment ext:documentenVoorBeslissing ?piece .
+    }
+    VALUES (?agendaitemTreatment ?decisionActivity) {`;
+  for (const { agendaitemTreatment, decisionActivity } of items) {
+    theQuery += `
+      (<${agendaitemTreatment}> <${decisionActivity}>)`;
+  }
+  theQuery += `
+    }
+  };`;
+  theQuery += `
+  DELETE {
+    GRAPH <${KANSELARIJ_GRAPH}> {
+      ?publicationFlow dct:subject ?agendaitemTreatment .
+    }
+  }
+  INSERT {
+    GRAPH <${KANSELARIJ_GRAPH}> {
+      ?publicationFlow dct:subject ?decisionActivity .
+    }
+  }
+  WHERE {
+    GRAPH <${KANSELARIJ_GRAPH}> {
+      ?agendaitemTreatment a besluit:BehandelingVanAgendapunt .
+      ?publicationFlow dct:subject ?agendaitemTreatment .
+    }
+    VALUES (?agendaitemTreatment ?decisionActivity) {`;
+  for (const { agendaitemTreatment, decisionActivity } of items) {
+    theQuery += `
+      (<${agendaitemTreatment}> <${decisionActivity}>)`;
+  }
+  theQuery += `
+    }
+  };`;
+  theQuery += `
   INSERT {
     GRAPH <${KANSELARIJ_GRAPH}> {
       ?agendaitemTreatment besluitvorming:heeftBeslissing ?decisionActivity .
@@ -399,9 +443,9 @@ async function migrateAgendaitemTreatments(uris) {
 }
 
 (async function () {
-  console.log("Merging doubled agenda-item-treatments");
-  const doubledAgendaitemTreatments = await fetchDoubledAgendaitemTreatments();
-  await mergeDoubledAgendaitemTreatments(doubledAgendaitemTreatments);
+  // console.log("Merging doubled agenda-item-treatments");
+  // const doubledAgendaitemTreatments = await fetchDoubledAgendaitemTreatments();
+  // await mergeDoubledAgendaitemTreatments(doubledAgendaitemTreatments);
 
   console.log(
     "Extracting decision-activity data from agenda-item-treatments on agendaitem"
