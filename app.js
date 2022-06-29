@@ -59,6 +59,32 @@ async function fetchAgendaitemTreatments() {
   );
 }
 
+async function fetchPubFlowTreatmentsWithoutAgendaitem() {
+  const response = await query(`
+  PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
+  PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
+  PREFIX pub: <http://mu.semte.ch/vocabularies/ext/publicatie/>
+  PREFIX dct: <http://purl.org/dc/terms/>
+
+  SELECT DISTINCT ?agendaitemTreatment
+  WHERE {
+    GRAPH <${KANSELARIJ_GRAPH}> {
+      ?publicationFlow a pub:Publicatieaangelegenheid .
+      ?agendaitemTreatment a besluit:BehandelingVanAgendapunt .
+      ?publicationFlow dct:subject ?agendaitemTreatment .
+
+      FILTER NOT EXISTS {
+        ?agendaitemTreatment besluitvorming:heeftBeslissing ?decisionActivity .
+      }
+    }
+  }
+  LIMIT ${BATCH_SIZE}
+  `);
+  return response.results.bindings.map(
+    (binding) => binding.agendaitemTreatment.value
+  );
+}
+
 async function migrateAgendaitemTreatments(uris) {
   const items = [];
   for (const uri of uris) {
@@ -244,17 +270,82 @@ async function migrateAgendaitemTreatments(uris) {
   await update(theQuery);
 }
 
+async function removeAgendaitemTreatments(uris) {
+  let theQuery = `
+  PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
+  PREFIX ext: <http://mu.semte.ch/vocabularies/ext/>
+  PREFIX dossier: <https://data.vlaanderen.be/ns/dossier#>
+  PREFIX besluit: <http://data.vlaanderen.be/ns/besluit#>
+  PREFIX besluitvorming: <http://data.vlaanderen.be/ns/besluitvorming#>
+  PREFIX prov: <http://www.w3.org/ns/prov#>
+  PREFIX dct: <http://purl.org/dc/terms/>
+
+  DELETE {
+    GRAPH <${KANSELARIJ_GRAPH}> {
+      ?s ?p ?o .
+    }
+  }
+  WHERE {
+    GRAPH <${KANSELARIJ_GRAPH}> {
+      ?s ?p ?o .
+    }
+    VALUES (?s) {`;
+  for (const uri of uris) {
+    theQuery += `
+      (<${uri}>)`;
+  }
+  theQuery += `
+    }
+  };`;
+  theQuery += `
+  DELETE {
+    GRAPH <${KANSELARIJ_GRAPH}> {
+      ?s ?p ?o .
+    }
+  }
+  WHERE {
+    GRAPH <${KANSELARIJ_GRAPH}> {
+      ?s ?p ?o .
+    }
+    VALUES (?o) {`;
+  for (const uri of uris) {
+    theQuery += `
+      (<${uri}>)`;
+  }
+  theQuery += `
+    }
+  }`;
+  await update(theQuery);
+}
+
 (async function () {
   console.log(
-    "Extracting decision-activity data from agenda-item-treatments on agendaitem"
+    "Extracting decision-activity data from agenda-item-treatments on pubflow without agendaitem"
   );
 
   let i = 1;
   while (true) {
+    const agendaitemTreatmentUris = await fetchPubFlowTreatmentsWithoutAgendaitem();
+    if (agendaitemTreatmentUris.length == 0) {
+      console.log("Finished migrating agenda-item-treatments on pubflow without agendaitem.");
+      break;
+    }
+    await migrateAgendaitemTreatments(agendaitemTreatmentUris);
+    await removeAgendaitemTreatments(agendaitemTreatmentUris);
+    console.log(`Batch ${i}`);
+    i += 1;
+  }
+
+  console.log(
+    "Extracting decision-activity data from agenda-item-treatments on agendaitem"
+  );
+
+  i = 1;
+  while (true) {
     const agendaitemTreatmentUris = await fetchAgendaitemTreatments();
     if (agendaitemTreatmentUris.length == 0) {
-      console.log("Finished migrating.");
-      return;
+      console.log("Finished migrating agenda-item-treatments on agendaitem");
+      break;
     }
     await migrateAgendaitemTreatments(agendaitemTreatmentUris);
     console.log(`Batch ${i}`);
